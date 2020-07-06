@@ -1,0 +1,215 @@
+app.module-------------
+
+import { BrowserModule } from '@angular/platform-browser';
+import { NgModule } from '@angular/core';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { CourseListComponent } from './course-list/course-list.component';
+import { BookComponent } from './book/book.component';
+import { HttpClientModule } from '@angular/common/http';
+import { BookService } from './book.service';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    CourseListComponent,
+    BookComponent
+  ],
+  imports: [
+    BrowserModule,
+    HttpClientModule,
+    AppRoutingModule
+  ],
+  providers: [BookService],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+
+book.service.ts--------------------------
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
+import { Book } from './Book';
+import { HttpErrorResponse } from '@angular/common/http';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BookService {
+  booksUrl = 'http://localhost:3020/bookList';
+
+  constructor(private http: HttpClient) { }
+
+  addBook(book: Book): Observable<any> {
+    const options = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post('http://localhost:3020/addBook', book, { headers: options }).pipe(
+      catchError(this.handleError));
+  }
+
+  updateBook(book: Book): Observable<any> {
+    const options = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.put<any>('http://localhost:3020/update', book, { headers: options }).pipe(
+      tap(_ => console.log(`updated hero id=${book.id}`)),
+      catchError(this.handleError)
+    );
+  }
+
+  getBooks(): Observable<Book[]> {
+    return this.http.get<Book[]>('http://localhost:3020/bookList').
+    pipe(
+           tap(data => console.log('Data Fetched:' + JSON.stringify(data))),
+           catchError(this.handleError));
+}
+
+deleteBook(bookId: number) {
+  const url = `${this.booksUrl}/${bookId}`;
+  return this.http.delete(url).pipe(
+    catchError(this.handleError));
+}
+
+private handleError(err: HttpErrorResponse) {
+  let errMsg = '';
+  if (err.error instanceof Error) {
+     // A client-side or network error occurred. Handle it accordingly.
+     console.log('An error occurred:', err.error.message);
+     errMsg = err.error.message; }
+     else {
+     // The backend returned an unsuccessful response code.
+     // The response body may contain clues as to what went wrong,
+     console.log(`Backend returned code ${err.status}`);
+     errMsg = err.error.status;
+   }
+  return throwError(errMsg);
+}
+}
+
+book.component.ts------------------------------------
+import { Component, OnInit } from '@angular/core';
+import { Book } from '../Book';
+import { BookService } from '../book.service';
+
+@Component({
+  selector: 'app-book',
+  templateUrl: './book.component.html',
+  styleUrls: ['./book.component.css']
+})
+export class BookComponent implements OnInit {
+  title = 'Shailesh Book Store';
+  books: Book[];
+  errorMessage: string;
+  addbook: boolean;
+  updatebook: boolean;
+  deletebook: boolean;
+
+  newBook: Book = { id: '11', name: 'Shailesh' };
+
+  constructor(private bookService: BookService) { }
+
+  getBooks() {
+    this.bookService.getBooks().subscribe(
+      books => this.books = books,
+      error => this.errorMessage = error);
+  }
+
+  addBook(id, name) {
+    this.bookService.addBook({ id: id, name: name })
+      .subscribe(hero => this.books.push(hero));
+  }
+  updateBook(id, name) {
+    this.bookService.updateBook({ 'id': id, 'name': name })
+      .subscribe(hero => this.books = hero);
+  }
+
+  deleteBook(id: number) {
+    this.bookService.deleteBook(id)
+    .subscribe(hero => this.books = <any>hero);
+  }
+
+  ngOnInit(): void {
+    this.getBooks();
+  }
+
+}
+
+book.component.html--------------------------
+<h1>{{title}}</h1>
+<h2>My Books</h2>
+<ul class="books">
+  <li *ngFor="let book of books">
+    <span class="badge">{{book.id}}</span> {{book.name}}
+  </li>
+</ul>
+<button (click)="addbook=true"> Add Book</button>&nbsp;
+<button (click)="updatebook=true">Update Book</button>&nbsp;
+<button (click)="deletebook=true">Delete Book</button>
+<br>
+<br/>
+<div *ngIf="addbook">
+  <table>
+    <tr>
+      <td>Enter Id of the book:</td>
+      <td>
+        <input type="number" #id>
+      </td>
+    </tr>
+    <br/>
+    <tr>
+      <td>Enter Name of the Book:</td>
+      <td>
+        <input type="text" #name>
+        <br>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <button (click)="addBook(id.value,name.value);addbook=false">Add Record</button>
+      </td>
+    </tr>
+  </table>
+  <br/>
+</div>
+<div *ngIf="updatebook">
+  <table>
+    <tr>
+      <td>Enter Id of the book:</td>
+      <td>
+        <input type="number" #id>
+      </td>
+    </tr>
+    <br/>
+    <tr>
+      <td>Enter Name of the Book:</td>
+      <td>
+        <input type="text" #name>
+        <br>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <button (click)="updateBook(id.value,name.value);updatebook=false">Update Record</button>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+<div *ngIf="deletebook">
+  <table>
+    <tr>
+      <td>Enter Id of the book:</td>
+      <td>
+        <input type="number" #id>
+      </td>
+    </tr>
+    <br/>
+    <tr>
+      <td>
+        <button (click)="deleteBook(id.value);deletebook=false">Delete Record</button>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="error" *ngIf="errorMessage">{{errorMessage}}</div>
